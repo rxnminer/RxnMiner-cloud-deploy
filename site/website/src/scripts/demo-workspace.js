@@ -3,7 +3,7 @@ if (root) initialize(root);
 
 function initialize(root) {
   const $ = (selector) => root.querySelector(selector);
-  const api = root.dataset.apiBase.replace(/\/$/, '');
+  const api = new URL(root.dataset.apiBase, location.href).href.replace(/\/$/, '');
   const input = $('[data-image-input]');
   const modelSelect = $('[data-model-select]');
   const run = $('[data-run]');
