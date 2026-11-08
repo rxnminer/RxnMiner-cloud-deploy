@@ -1,0 +1,89 @@
+---
+import SiteLayout from '../layouts/SiteLayout.astro';
+import { assetPath, type SiteLocale } from '../data/site';
+interface Props { locale: SiteLocale }
+const { locale } = Astro.props;
+---
+<SiteLayout locale={locale} active="try" title="Try RxnMiner" description="Upload a chemistry figure and inspect the structured RxnMiner extraction.">
+  <div class="page-shell try-page" data-demo-root data-rdkit-base={assetPath('/vendor/rdkit/')} data-api-base={import.meta.env.PUBLIC_DEMO_API_URL || (import.meta.env.DEV ? 'http://127.0.0.1:4322/api/demo' : '/api/demo')}>
+    <header class="page-intro">
+      <p class="eyebrow">RXNMINER / INTERACTIVE EXTRACTION</p>
+      <h1>Put a reaction figure on the workbench.</h1>
+      <p>Upload one figure, choose a vision model, and inspect the source figure alongside molecular structures, conditions, and yields.</p>
+    </header>
+
+    <section class="try-grid" aria-label="Interactive RxnMiner demo">
+      <form class="control-panel" data-demo-form>
+        <div class="panel-kicker">START A RUN</div>
+        <label class="upload-drop" data-upload-drop>
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/tiff" data-image-input />
+          <span class="upload-title">Drop a reaction figure here</span>
+          <span class="upload-note">PNG, JPEG, WebP, or TIFF · 5 MiB max</span>
+          <span class="upload-file" data-file-name>No image selected</span>
+        </label>
+        <div class="field">
+          <label for="demo-model">Model</label>
+          <select id="demo-model" data-model-select disabled><option>Loading model catalog…</option></select>
+        </div>
+        <div class="field">
+          <label for="demo-model-key">Model API key</label>
+          <input id="demo-model-key" type="password" autocomplete="off" placeholder="Used only for this run" data-model-key />
+          <small>Charged by your model provider. Never stored by this page.</small>
+        </div>
+        <div class="field">
+          <label for="demo-uniparser-key">UniParser API key</label>
+          <input id="demo-uniparser-key" type="password" autocomplete="off" placeholder="Used only for molecule recognition" data-uniparser-key />
+          <small>Charged by your UniParser account. Never stored by this page.</small>
+        </div>
+        <label class="check-row"><input type="checkbox" data-billing /> <span>I understand this run uses my supplied model and UniParser accounts.</span></label>
+        <button class="button run-button" type="submit" data-run disabled>Run extraction</button>
+        <button class="text-button" type="button" data-sample>Load the recorded workspace sample</button>
+        <p class="form-error" data-error role="alert" hidden></p>
+        <p class="form-status" data-status>Live mode is checked when you open the page.</p>
+      </form>
+
+      <section class="workspace-panel" data-workspace aria-live="polite">
+        <div class="workspace-topline"><span class="status-dot" data-status-dot></span><span data-workspace-state>READY FOR A FIGURE</span><span class="workspace-model" data-workspace-model></span></div>
+        <div class="run-activity" data-run-activity role="status" hidden>
+          <span class="run-spinner" aria-hidden="true"></span>
+          <div><strong data-run-label>Running extraction</strong><span>Your figure is being processed. Results will appear automatically.</span></div>
+        </div>
+        <div class="workspace-body">
+          <div class="source-column">
+            <div class="column-label">SOURCE FIGURE</div>
+            <div class="figure-frame"><div class="source-image-wrap"><img data-figure alt="Uploaded reaction figure" hidden /><svg class="source-overlay" data-source-overlay aria-hidden="true"></svg></div><div class="figure-empty" data-figure-empty>Load the sample or upload your own figure.</div></div>
+            <div class="source-meta" data-source-meta>Source evidence stays attached to the run.</div>
+          </div>
+          <div class="result-column">
+            <div class="results-toolbar"><div class="column-label">REACTIONS <span data-reaction-count></span></div><button type="button" data-download disabled>Download JSON</button></div>
+            <nav class="reaction-navigation" aria-label="Reaction records" data-reaction-navigation></nav>
+            <div class="stage-list" data-stage-list>
+              <div class="empty-result">The extracted reactions will appear here with reactants, products, conditions, and E-SMILES evidence.</div>
+            </div>
+          </div>
+        </div>
+        <section class="billing-panel" data-billing-panel hidden aria-label="Usage and estimated cost">
+          <h3>Usage &amp; estimated cost</h3>
+          <div data-billing-details></div>
+          <p data-billing-note></p>
+        </section>
+        <div class="workspace-footer"><span data-usage>Usage will appear after a live run.</span><a href={assetPath('/demos/')}>See the recorded video ↗</a></div>
+      </section>
+    </section>
+    <section class="try-notes">
+      <div><p class="eyebrow">WHAT IS SENT</p><h2>One figure, one isolated run.</h2></div>
+      <p>The service receives the selected image and the two keys for the duration of the request. It keeps model and recognition credentials in memory only, separates each workspace, and exposes E-SMILES 2.0 strings without rewriting their raw extensions.</p>
+    </section>
+  </div>
+</SiteLayout>
+<script>
+  import '../scripts/demo-workspace.js';
+</script>
+<style is:global>
+.billing-panel{padding:16px;border-top:1px solid var(--line);background:#f7f8fc}.billing-panel h3{margin:0 0 10px;font-size:.85rem;color:var(--accent-dark)}.billing-panel table{width:100%;border-collapse:collapse;font-size:.72rem}.billing-panel th,.billing-panel td{text-align:left;padding:7px 5px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.billing-panel p{font-size:.7rem;color:var(--muted);line-height:1.5}.billing-total{display:flex;justify-content:space-between;padding-top:12px;font-size:.85rem}
+.run-activity{display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(110deg,#edf3fc,#f3eefb);border-bottom:1px solid #dce1f0;color:#46587d}.run-activity>div{display:grid;gap:4px}.run-activity strong{font-size:.85rem;font-weight:700}.run-activity div>span{font-size:.75rem;line-height:1.5;color:#65718a}.run-spinner{display:block;flex:none;width:22px;height:22px;border:3px solid #cdd8ec;border-top-color:#667fbd;border-right-color:#a18dc7;border-radius:50%;animation:extraction-spin .9s linear infinite}.try-page[data-running="true"] .status-dot{width:8px;height:8px;border-radius:50%;background:#7b8ec5;box-shadow:0 0 0 4px #7b8ec51a}@keyframes extraction-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.run-spinner{animation:none}}
+.try-page [hidden]{display:none!important}.extension-note{display:block;font-size:.62rem;line-height:1.4;color:var(--muted);margin:5px 0}
+.try-page .page-intro{padding:2.2rem 0 1.6rem}.try-page .page-intro h1{max-width:none;font-size:2.35rem;line-height:1.12}.try-page .page-intro p:not(.eyebrow){font-size:.98rem;line-height:1.55;margin-top:.6rem}
+.try-grid{display:grid;grid-template-columns:310px minmax(0,1fr);gap:18px;padding:1.25rem 0 3.2rem;align-items:start}.control-panel,.workspace-panel{border:1px solid var(--line);background:var(--surface);border-radius:9px;box-shadow:0 12px 36px #29333b0b}.control-panel{padding:18px;height:max-content}.panel-kicker,.column-label{font:700 .68rem var(--mono);letter-spacing:.12em;color:var(--accent-dark)}.upload-drop{display:grid;gap:7px;margin:14px 0;padding:22px 16px;border:1px dashed var(--line-strong);border-radius:7px;background:var(--paper-soft);cursor:pointer}.upload-drop input{position:absolute;width:1px;height:1px;opacity:0}.upload-title{font-family:var(--serif);font-size:1.3rem;color:var(--ink-strong)}.upload-note,.upload-file,.field small{color:var(--muted);font-size:.75rem;line-height:1.5}.upload-file{font-family:var(--mono);overflow-wrap:anywhere}.field{display:grid;gap:7px;margin:13px 0}.field label{font-weight:700;font-size:.8rem}.field input,.field select{width:100%;min-height:42px;padding:9px 10px;border:1px solid var(--line-strong);border-radius:5px;background:#fff;color:var(--ink)}.check-row{display:flex;gap:8px;align-items:flex-start;margin:16px 0;color:var(--muted);font-size:.75rem;line-height:1.5}.check-row input{margin-top:3px}.run-button{width:100%;margin-top:2px}.run-button:disabled{opacity:.45;cursor:not-allowed}.text-button{display:block;width:100%;padding:13px 0;border:0;background:none;color:var(--accent-dark);font-weight:700;cursor:pointer}.form-status,.form-error{margin:12px 0 0;color:var(--muted);font-size:.75rem;line-height:1.5}.form-error{color:#a54840}.workspace-panel{min-width:0;overflow:hidden}.workspace-topline{display:flex;align-items:center;gap:9px;padding:13px 16px;background:#f4f7fb;border-bottom:1px solid var(--line);font:700 .68rem var(--mono);letter-spacing:.07em;color:var(--accent-dark)}.workspace-model{margin-left:auto;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none}.workspace-body{display:grid;grid-template-columns:minmax(260px,.68fr) minmax(0,1.32fr);min-height:540px}.source-column,.result-column{padding:16px}.source-column{border-right:1px solid var(--line);background:#fbfcfe}.figure-frame{position:relative;display:grid;place-items:center;min-height:340px;margin-top:12px;border:1px solid var(--line);background:#eef2f6;border-radius:6px;overflow:hidden}.source-image-wrap{position:relative;width:100%;height:100%;min-height:340px;display:grid;place-items:center}.figure-frame img{width:100%;max-height:520px;object-fit:contain}.source-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.source-overlay rect{fill:#7097c522;stroke:#315780;stroke-width:3;vector-effect:non-scaling-stroke}.figure-empty{padding:30px;text-align:center;color:var(--muted);font-size:.85rem;line-height:1.6}.source-meta{margin-top:10px;color:var(--muted);font-size:.72rem;line-height:1.5}.result-column{min-width:0}.results-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}.results-toolbar button{border:1px solid var(--line-strong);background:#fff;border-radius:5px;padding:7px 10px;color:var(--accent-dark);font-size:.75rem;font-weight:700;cursor:pointer}.results-toolbar button:disabled{opacity:.45;cursor:not-allowed}.reaction-navigation{display:flex;gap:5px;overflow:auto;padding:10px 0;border-bottom:1px solid var(--line)}.reaction-navigation button{flex:none;border:1px solid var(--line);border-radius:4px;background:#fff;padding:6px 9px;font: .68rem var(--mono);cursor:pointer;color:var(--muted)}.reaction-navigation button[aria-pressed="true"]{background:#e5edf6;border-color:#7898bc;color:var(--accent-dark)}.stage-list{display:grid;gap:12px;margin-top:12px;max-height:710px;overflow:auto}.empty-result{padding:26px 18px;border:1px dashed var(--line-strong);color:var(--muted);font-size:.84rem;line-height:1.6}.visual-reaction{border:1px solid var(--line);border-radius:6px;background:#fff;overflow:hidden}.visual-reaction>header{display:flex;justify-content:space-between;gap:10px;padding:9px 12px;background:#f4f7fb;color:var(--accent-dark);font:.68rem var(--mono)}.reaction-scheme{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center;padding:11px}.scheme-side{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;min-width:0}.molecule-plus{color:var(--muted);font-size:.8rem}.visual-molecule{min-width:108px;max-width:185px;flex:1 1 108px;text-align:center;border:1px solid #e9edf2;border-radius:5px;padding:6px;background:#fff}.structure-canvas{height:115px;display:grid;place-items:center;color:var(--muted);font-size:.7rem;background:#fff}.structure-canvas img{width:100%;height:100%;object-fit:contain}.structure-label{font:700 .67rem var(--mono);color:var(--ink-strong);overflow-wrap:anywhere}.visual-molecule details{text-align:left;margin-top:5px}.visual-molecule summary{font-size:.64rem;color:var(--accent-dark);cursor:pointer}.visual-molecule code{display:block;margin-top:5px;max-height:90px;overflow:auto;font:.58rem/1.35 var(--mono);overflow-wrap:anywhere;color:var(--ink)}.molecule-group>b{font:700 .62rem var(--mono);letter-spacing:.08em;color:var(--muted)}.reaction-arrow{font-size:1.2rem;color:var(--accent);font-weight:700}.condition-section{padding:9px 12px;border-top:1px solid var(--line);background:#fafbfd}.condition-section h3{margin:0 0 7px;color:var(--muted);font:700 .62rem var(--mono);letter-spacing:.09em;text-transform:uppercase}.condition-chips{display:flex;flex-wrap:wrap;gap:6px}.condition-chips span{padding:4px 7px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink);font-size:.66rem;line-height:1.4}.condition-chips b{color:var(--accent-dark)}.metric-section{display:flex;flex-wrap:wrap;border-top:1px solid var(--line)}.metric-section div{display:grid;gap:3px;padding:8px 11px;border-right:1px solid var(--line)}.metric-section span{color:var(--muted);font-size:.6rem}.metric-section strong{font-size:.75rem;color:var(--ink-strong)}.reaction-description{margin:0;padding:8px 12px;border-top:1px solid var(--line);font-size:.7rem;color:var(--muted);line-height:1.5}.workspace-footer{display:flex;justify-content:space-between;gap:12px;padding:11px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:.72rem}.workspace-footer a{color:var(--accent-dark)}.try-notes{display:grid;grid-template-columns:1fr 1.3fr;gap:6%;padding:4rem 0 6rem;border-top:1px solid var(--line)}.try-notes h2{margin:0;font:500 2.4rem/1.2 var(--serif)}.try-notes p:last-child{margin:0;color:var(--muted);line-height:1.8}
+@media(max-width:950px){.try-grid,.workspace-body,.try-notes{grid-template-columns:1fr}.source-column{border-right:0;border-bottom:1px solid var(--line)}.workspace-body{min-height:0}.stage-list{max-height:none}}@media(max-width:650px){.workspace-footer,.reaction-details{flex-direction:column}.try-grid{padding-top:2rem}.workspace-model{display:none}}
+</style>

@@ -1,0 +1,6 @@
+# Pinned runtime for RxnMiner. runtime/install.sh and docker/Dockerfile read this file.
+# Node is installed as an npm package so the whole runtime lives under ./node_modules and
+# one PATH entry covers it. Versions match the image the paper numbers were produced with.
+NODE_PACKAGE=node@22.19.0
+PI_PACKAGE=@earendil-works/pi-coding-agent@0.82.1
+TYPEBOX_PACKAGE=typebox@1.1.38

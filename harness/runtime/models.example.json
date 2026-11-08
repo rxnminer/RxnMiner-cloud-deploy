@@ -1,0 +1,67 @@
+{
+  "_comment": [
+    "Pi models.json profiles used by bin/rxnminer. The runner writes the selected profile to",
+    "$PI_CODING_AGENT_DIR/models.json at run time and fills apiKey from the environment, so",
+    "this file never holds a credential.",
+    "anthropic: any Anthropic-messages endpoint (official API or a gateway such as BLSC).",
+    "  forceAdaptiveThinking is deliberately false: with adaptive thinking some gateways route",
+    "  the request to a backend that returns no thinking and no prompt cache, and the model",
+    "  then loops on bash instead of reading the Skill (observed 2026-09-10).",
+    "openai-compat: any OpenAI chat-completions endpoint (Azure, vLLM, a local Qwen, ...).",
+    "The paper lane is anthropic + Claude-Opus-5 through the BLSC gateway."
+  ],
+  "profiles": {
+    "anthropic": {
+      "provider": "anthropic",
+      "env_base_url": ["RXNMINER_BASE_URL", "ANTHROPIC_BASE_URL"],
+      "env_api_key": ["RXNMINER_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"],
+      "default_model": "Claude-Opus-5",
+      "config": {
+        "baseUrl": "$BASE_URL",
+        "api": "anthropic-messages",
+        "apiKey": "$PI_PROVIDER_API_KEY",
+        "compat": {
+          "supportsEagerToolInputStreaming": false,
+          "forceAdaptiveThinking": false
+        },
+        "models": [
+          {
+            "id": "$MODEL",
+            "reasoning": true,
+            "input": ["text", "image"],
+            "contextWindow": 200000,
+            "maxTokens": 64000,
+            "compat": {
+              "supportsEagerToolInputStreaming": false,
+              "forceAdaptiveThinking": false
+            }
+          }
+        ]
+      }
+    },
+    "openai-compat": {
+      "provider": "openai-compat",
+      "env_base_url": ["RXNMINER_BASE_URL", "OPENAI_BASE_URL", "OPENAI_API_BASE"],
+      "env_api_key": ["RXNMINER_API_KEY", "OPENAI_API_KEY"],
+      "default_model": "gpt-5.6-sol",
+      "config": {
+        "baseUrl": "$BASE_URL",
+        "api": "openai-completions",
+        "apiKey": "$PI_PROVIDER_API_KEY",
+        "compat": {
+          "supportsDeveloperRole": false,
+          "supportsReasoningEffort": false
+        },
+        "models": [
+          {
+            "id": "$MODEL",
+            "reasoning": false,
+            "input": ["text", "image"],
+            "contextWindow": 1000000,
+            "maxTokens": 32000
+          }
+        ]
+      }
+    }
+  }
+}

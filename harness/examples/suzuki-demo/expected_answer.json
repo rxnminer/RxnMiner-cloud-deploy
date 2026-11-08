@@ -1,0 +1,77 @@
+{
+  "is_multistep": false,
+  "reaction_class": "Suzuki coupling",
+  "reaction_graph": [],
+  "selected_examples": [
+    {
+      "conditions": [
+        [
+          {
+            "role": "catalyst",
+            "text": "Pd(PPh3)4 (2 mol%)"
+          },
+          {
+            "role": "base",
+            "text": "K2CO3 (2 equiv)"
+          },
+          {
+            "role": "solvent",
+            "text": "EtOH/H2O (4:1)"
+          },
+          {
+            "role": "temperature",
+            "text": "80 °C"
+          },
+          {
+            "role": "time",
+            "text": "2 h"
+          }
+        ]
+      ],
+      "description": "Synthetic single-reaction Suzuki demo",
+      "failed": false,
+      "instance_id": "3",
+      "metrics": [
+        {
+          "of": "3",
+          "role": "yield",
+          "text": "92%"
+        }
+      ],
+      "products": [
+        {
+          "SMILES": "c1ccc(-c2ccccc2)cc1",
+          "bbox": [
+            1070,
+            180,
+            1360,
+            420
+          ],
+          "identifier": "3"
+        }
+      ],
+      "reactants": [
+        {
+          "SMILES": "Brc1ccccc1",
+          "bbox": [
+            70,
+            180,
+            360,
+            420
+          ],
+          "identifier": "1"
+        },
+        {
+          "SMILES": "OB(O)c1ccccc1",
+          "bbox": [
+            430,
+            180,
+            720,
+            420
+          ],
+          "identifier": "2"
+        }
+      ]
+    }
+  ]
+}

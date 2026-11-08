@@ -1,0 +1,534 @@
+{
+ "is_multistep": false,
+ "has_reaction_template": true,
+ "reaction_templates": [
+  {
+   "template_id": "T1",
+   "reactants": [
+    {
+     "identifier": "r0",
+     "E-SMILES": "*/C=C/C=O<sep><a>0:R[1]</a>",
+     "_source": {
+      "type": "template",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       95,
+       66,
+       352,
+       214
+      ],
+      "bbox_index": 0,
+      "ocsr_esmi": "*/C=C/C=O<sep><a>0:R[1]</a>",
+      "origin": "molparser"
+     }
+    },
+    {
+     "identifier": "r1",
+     "E-SMILES": "*/N=N/C(*)=O<sep><a>0:R[3]</a><a>4:R[2]</a>",
+     "_source": {
+      "type": "template",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       400,
+       29,
+       623,
+       250
+      ],
+      "bbox_index": 1,
+      "ocsr_esmi": "*/N=N/C(*)=O<sep><a>0:R[3]</a><a>4:R[2]</a>",
+      "origin": "molparser"
+     }
+    }
+   ],
+   "products": [
+    {
+     "identifier": "p3",
+     "E-SMILES": "*C(=O)N1C(=O)CC(*)N1*<sep><a>0:R[2]</a><a>8:R[1]</a><a>10:R[3]</a>",
+     "_source": {
+      "type": "template",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       1027,
+       19,
+       1289,
+       265
+      ],
+      "bbox_index": 3,
+      "ocsr_esmi": "*C(=O)N1C(=O)CC(*)N1*<sep><a>0:R[2]</a><a>8:R[1]</a><a>10:R[3]</a>",
+      "origin": "molparser"
+     }
+    }
+   ],
+   "conditions": [
+    [
+     {
+      "role": "catalyst",
+      "text": "20 mol% G25 (1,4-dimethyl-2-mesityl-1,2,4-triazolium chloride)",
+      "smiles": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]",
+      "E-SMILES": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]<sep>",
+      "_source": {
+       "esmiles_audit": {
+        "semantic_valid": true,
+        "concrete_valid": true,
+        "unsupported_labels": [],
+        "open_markush_labels": [],
+        "unknown_tags": [],
+        "remaining_dummies": 0,
+        "raw_sha256": "5c9c4fb816b0509dfeaf7f226f24521c8b5f0dbdd6b795e62b3f63cf8c3c0c50"
+       },
+       "bbox": [
+        668,
+        217,
+        983,
+        426
+       ],
+       "bbox_index": 2
+      }
+     },
+     {
+      "role": "base",
+      "text": "20 mol% DBU"
+     },
+     {
+      "role": "solvent",
+      "text": "CH2Cl2"
+     },
+     {
+      "role": "additive",
+      "text": "4 A MS"
+     },
+     {
+      "role": "temperature",
+      "text": "0 C"
+     }
+    ]
+   ]
+  }
+ ],
+ "selected_examples": [
+  {
+   "instance_id": "p4",
+   "reactants": [
+    {
+     "identifier": "r0",
+     "smiles": "O=C/C=C/c1ccccc1",
+     "E-SMILES": "O=C/C=C/c1ccccc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "generic enal template crop (bbox 0) draws a trans (zig-zag) C=C between R1 and CHO; substituents on opposite sides",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       95,
+       66,
+       352,
+       214
+      ],
+      "bbox_index": 0,
+      "ocsr_esmi": "*/C=C/C=O<sep><a>0:R[1]</a>",
+      "_bbox_inherited": "template"
+     }
+    },
+    {
+     "identifier": "r1",
+     "smiles": "O=C(/N=N/c1ccccc1)c1ccccc1",
+     "E-SMILES": "O=C(/N=N/c1ccccc1)c1ccccc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "azo template crop (bbox 1) draws acyl and R3 on opposite sides of the N=N bond (trans)",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       400,
+       29,
+       623,
+       250
+      ],
+      "bbox_index": 1,
+      "ocsr_esmi": "*/N=N/C(*)=O<sep><a>0:R[3]</a><a>4:R[2]</a>",
+      "_bbox_inherited": "template"
+     }
+    }
+   ],
+   "products": [
+    {
+     "identifier": "p4",
+     "smiles": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccccc1",
+     "E-SMILES": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccccc1<sep>",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       93,
+       481,
+       384,
+       715
+      ],
+      "bbox_index": 4,
+      "ocsr_esmi": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccccc1<sep>",
+      "ocsr_audit": {
+       "decision": "accepted",
+       "evidence": "crop bbox_004 shows pyrazolidin-3-one ring: C=O at C3, CH2, CH bearing 'Ph', N1-'Ph', N2-C(=O)-'Ph'; no wedge/dash at the ring CH so stereocentre left unspecified"
+      },
+      "origin": "molparser"
+     }
+    }
+   ],
+   "conditions": [
+    [
+     {
+      "role": "catalyst",
+      "text": "20 mol% G25 (1,4-dimethyl-2-mesityl-1,2,4-triazolium chloride)",
+      "smiles": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]",
+      "E-SMILES": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]<sep>",
+      "_source": {
+       "esmiles_audit": {
+        "semantic_valid": true,
+        "concrete_valid": true,
+        "unsupported_labels": [],
+        "open_markush_labels": [],
+        "unknown_tags": [],
+        "remaining_dummies": 0,
+        "raw_sha256": "5c9c4fb816b0509dfeaf7f226f24521c8b5f0dbdd6b795e62b3f63cf8c3c0c50"
+       },
+       "bbox": [
+        668,
+        217,
+        983,
+        426
+       ],
+       "bbox_index": 2
+      }
+     },
+     {
+      "role": "base",
+      "text": "20 mol% DBU"
+     },
+     {
+      "role": "solvent",
+      "text": "CH2Cl2"
+     },
+     {
+      "role": "additive",
+      "text": "4 A MS"
+     },
+     {
+      "role": "temperature",
+      "text": "0 C"
+     }
+    ]
+   ],
+   "description": "R1 = Ph, R2 = Ph, R3 = Ph",
+   "inherit_template": "T1",
+   "markush_enumeration": {
+    "R1": "Ph",
+    "R2": "Ph",
+    "R3": "Ph"
+   },
+   "metrics": [
+    {
+     "role": "yield",
+     "text": "63%",
+     "of": "p4"
+    }
+   ]
+  },
+  {
+   "instance_id": "p5",
+   "reactants": [
+    {
+     "identifier": "r0",
+     "smiles": "C/C=C/C=O",
+     "E-SMILES": "C/C=C/C=O",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "generic enal template crop (bbox 0) draws a trans (zig-zag) C=C between R1 and CHO",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       95,
+       66,
+       352,
+       214
+      ],
+      "bbox_index": 0,
+      "ocsr_esmi": "*/C=C/C=O<sep><a>0:R[1]</a>",
+      "_bbox_inherited": "template"
+     }
+    },
+    {
+     "identifier": "r1",
+     "smiles": "Cc1ccccc1C(=O)/N=N/c1ccccc1",
+     "E-SMILES": "Cc1ccccc1C(=O)/N=N/c1ccccc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "azo template crop (bbox 1) draws acyl and R3 trans across N=N",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       400,
+       29,
+       623,
+       250
+      ],
+      "bbox_index": 1,
+      "ocsr_esmi": "*/N=N/C(*)=O<sep><a>0:R[3]</a><a>4:R[2]</a>",
+      "_bbox_inherited": "template"
+     }
+    }
+   ],
+   "products": [
+    {
+     "identifier": "p5",
+     "smiles": "Cc1ccccc1C(=O)N1C(=O)CC(C)N1c1ccccc1",
+     "E-SMILES": "Cc1ccccc1C(=O)N1C(=O)CC(C)N1c1ccccc1<sep>",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       430,
+       481,
+       852,
+       714
+      ],
+      "bbox_index": 5,
+      "ocsr_esmi": "Cc1ccccc1C(=O)N1C(=O)CC(C)N1c1ccccc1<sep>",
+      "ocsr_audit": {
+       "decision": "accepted",
+       "evidence": "crop bbox_005 explicitly prints 'Me' on the ring CH, 'Ph' on N1 and '2-MeC6H4' on the N-acyl group; OCSR ortho-tolyl matches the printed 2-Me label; no wedge/dash present"
+      },
+      "origin": "molparser"
+     }
+    }
+   ],
+   "conditions": [
+    [
+     {
+      "role": "catalyst",
+      "text": "20 mol% G25 (1,4-dimethyl-2-mesityl-1,2,4-triazolium chloride)",
+      "smiles": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]",
+      "E-SMILES": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]<sep>",
+      "_source": {
+       "esmiles_audit": {
+        "semantic_valid": true,
+        "concrete_valid": true,
+        "unsupported_labels": [],
+        "open_markush_labels": [],
+        "unknown_tags": [],
+        "remaining_dummies": 0,
+        "raw_sha256": "5c9c4fb816b0509dfeaf7f226f24521c8b5f0dbdd6b795e62b3f63cf8c3c0c50"
+       },
+       "bbox": [
+        668,
+        217,
+        983,
+        426
+       ],
+       "bbox_index": 2
+      }
+     },
+     {
+      "role": "base",
+      "text": "20 mol% DBU"
+     },
+     {
+      "role": "solvent",
+      "text": "CH2Cl2"
+     },
+     {
+      "role": "additive",
+      "text": "4 A MS"
+     },
+     {
+      "role": "temperature",
+      "text": "0 C"
+     }
+    ]
+   ],
+   "description": "R1 = Me, R2 = 2-MeC6H4, R3 = Ph",
+   "inherit_template": "T1",
+   "markush_enumeration": {
+    "R1": "Me",
+    "R2": "2-MeC6H4",
+    "R3": "Ph"
+   },
+   "metrics": [
+    {
+     "role": "yield",
+     "text": "82%",
+     "of": "p5"
+    }
+   ]
+  },
+  {
+   "instance_id": "p6",
+   "reactants": [
+    {
+     "identifier": "r0",
+     "smiles": "O=C/C=C/c1ccccc1",
+     "E-SMILES": "O=C/C=C/c1ccccc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "generic enal template crop (bbox 0) draws a trans (zig-zag) C=C between R1 and CHO",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       95,
+       66,
+       352,
+       214
+      ],
+      "bbox_index": 0,
+      "ocsr_esmi": "*/C=C/C=O<sep><a>0:R[1]</a>",
+      "_bbox_inherited": "template"
+     }
+    },
+    {
+     "identifier": "r1",
+     "smiles": "O=C(/N=N/c1ccccc1)c1ccc(F)cc1",
+     "E-SMILES": "O=C(/N=N/c1ccccc1)c1ccc(F)cc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "stereo_audit": {
+       "decision": "specified",
+       "evidence": "azo template crop (bbox 1) draws acyl and R3 trans across N=N",
+       "rdkit_ez": "E"
+      },
+      "origin": "agent",
+      "bbox": [
+       400,
+       29,
+       623,
+       250
+      ],
+      "bbox_index": 1,
+      "ocsr_esmi": "*/N=N/C(*)=O<sep><a>0:R[3]</a><a>4:R[2]</a>",
+      "_bbox_inherited": "template"
+     }
+    }
+   ],
+   "products": [
+    {
+     "identifier": "p6",
+     "smiles": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccc(F)cc1",
+     "E-SMILES": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccc(F)cc1",
+     "_source": {
+      "type": "image_structure",
+      "agent": "skill",
+      "identifier_explicit": true,
+      "bbox": [
+       895,
+       480,
+       1289,
+       716
+      ],
+      "bbox_index": 6,
+      "ocsr_esmi": "O=C1CC(c2ccccc2)N(c2ccccc2)N1C(=O)c1ccc(Cl)cc1<sep>",
+      "ocsr_override": {
+       "reason": "halogen misread: OCSR wrote Cl where the figure prints F",
+       "evidence": "audit crop bbox_006 shows the printed label '4-FC6H4' next to the N-acyl carbonyl; ring CH bears 'Ph', N1 bears 'Ph'; no wedge/dash drawn"
+      },
+      "ocsr_audit": {
+       "decision": "override",
+       "evidence": "crop bbox_006 explicitly prints '4-FC6H4' on the N-acyl group (fluorine), but OCSR transcribed a 4-chlorophenyl"
+      },
+      "origin": "molparser",
+      "_ocsr_override_applied": true
+     }
+    }
+   ],
+   "conditions": [
+    [
+     {
+      "role": "catalyst",
+      "text": "20 mol% G25 (1,4-dimethyl-2-mesityl-1,2,4-triazolium chloride)",
+      "smiles": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]",
+      "E-SMILES": "Cc1cc(C)c(-[n+]2cn(C)c(C)n2)c(C)c1.[Cl-]<sep>",
+      "_source": {
+       "esmiles_audit": {
+        "semantic_valid": true,
+        "concrete_valid": true,
+        "unsupported_labels": [],
+        "open_markush_labels": [],
+        "unknown_tags": [],
+        "remaining_dummies": 0,
+        "raw_sha256": "5c9c4fb816b0509dfeaf7f226f24521c8b5f0dbdd6b795e62b3f63cf8c3c0c50"
+       },
+       "bbox": [
+        668,
+        217,
+        983,
+        426
+       ],
+       "bbox_index": 2
+      }
+     },
+     {
+      "role": "base",
+      "text": "20 mol% DBU"
+     },
+     {
+      "role": "solvent",
+      "text": "CH2Cl2"
+     },
+     {
+      "role": "additive",
+      "text": "4 A MS"
+     },
+     {
+      "role": "temperature",
+      "text": "0 C"
+     }
+    ]
+   ],
+   "description": "R1 = Ph, R2 = 4-FC6H4, R3 = Ph",
+   "inherit_template": "T1",
+   "markush_enumeration": {
+    "R1": "Ph",
+    "R2": "4-FC6H4",
+    "R3": "Ph"
+   },
+   "metrics": [
+    {
+     "role": "yield",
+     "text": "68%",
+     "of": "p6"
+    }
+   ]
+  }
+ ],
+ "reaction_graph": [],
+ "_extractor": "chem_extract_skill"
+}

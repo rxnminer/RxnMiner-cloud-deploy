@@ -1,0 +1,4 @@
+interface:
+  display_name: "MolParser Extended-SMILES"
+  short_description: "Generate and validate MolParser E-SMILES"
+  default_prompt: "Use $molparser-extended-smiles to validate this Extended-SMILES string."

@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+"""RxnMiner: extract every concrete reaction from one chemistry figure into V2 JSON.
+
+This runner reproduces the exact Pi invocation the paper's Harbor lane uses, outside Harbor:
+the same Skill, the same native chemistry tools (MCP), the same task instruction and execution
+contract, and the same model configuration. Only the credentials and the working directory
+come from the caller.
+
+  rxnminer check                                   # runtime, Python deps, MolParser, payload
+  rxnminer prompt [--workdir DIR] [--closed-book HOSTS]
+  rxnminer extract FIGURE --out DIR [--provider anthropic|openai-compat] [--model NAME]
+                   [--workdir /app] [--closed-book HOSTS] [--thinking LEVEL] [--timeout SEC]
+
+Environment:
+  anthropic profile      ANTHROPIC_BASE_URL + ANTHROPIC_API_KEY (or RXNMINER_BASE_URL / RXNMINER_API_KEY)
+  openai-compat profile  OPENAI_BASE_URL + OPENAI_API_KEY
+  MOLPARSER_URL          MolParser OCSR endpoint used by detect/ocsr_detect (or OCSR_CACHE for offline replay)
+  RXNMINER_PI            override the pi binary (default ./node_modules/.bin/pi)
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SKILL_DIR = ROOT / "skills" / "reaction-extract"
+EXTENSION = ROOT / "pi-extension" / "index.ts"
+PROMPTS = ROOT / "prompts"
+PROFILES = ROOT / "runtime" / "models.example.json"
+DEFAULT_WORKDIR = "/app"
+CONTRACT_HEADER = "\n\nHARBOR EXECUTION CONTRACT (mandatory):\n"
+
+
+def die(message: str, code: int = 2) -> None:
+    print(f"rxnminer: {message}", file=sys.stderr)
+    sys.exit(code)
+
+
+def pi_binary() -> Path:
+    override = os.environ.get("RXNMINER_PI")
+    candidate = Path(override) if override else ROOT / "node_modules" / ".bin" / "pi"
+    if not candidate.is_file():
+        die(f"pi runtime not found at {candidate}; run: bash runtime/install.sh (or use docker/)")
+    return candidate
+
+
+def runtime_env(extra: dict[str, str]) -> dict[str, str]:
+    env = dict(os.environ)
+    node_bin = ROOT / "node_modules" / "node" / "bin"
+    env["PATH"] = f"{node_bin}:{env.get('PATH', '')}" if node_bin.is_dir() else env.get("PATH", "")
+    env["PYTHONPATH"] = str(ROOT) + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    env.setdefault("RXN_SKILLS_PYTHON", sys.executable or "python3")
+    env["CHEMRXN_SKILLS"] = "reaction-extract"
+    env.update(extra)
+    return env
+
+
+def compose_prompt(workdir: str, closed_book_hosts: str | None) -> str:
+    instruction = (PROMPTS / "task_instruction.md").read_text(encoding="utf-8")
+    contract = (PROMPTS / "execution_contract.txt").read_text(encoding="utf-8").strip()
+    prompt = instruction + CONTRACT_HEADER + contract
+    if closed_book_hosts:
+        policy = (PROMPTS / "network_policy_offline.txt").read_text(encoding="utf-8").strip()
+        prompt = prompt.rstrip() + "\n\n" + policy.replace("{hosts}", closed_book_hosts) + "\n"
+    if workdir != DEFAULT_WORKDIR:
+        prompt = prompt.replace(DEFAULT_WORKDIR + "/", workdir.rstrip("/") + "/")
+    # The benchmark wrapper hands the prompt to pi through "$(cat file)", which drops trailing
+    # newlines; mirror that so the model receives byte-identical text.
+    return prompt.rstrip("\n")
+
+
+def completed_chemistry_steps(sessions: list[Path]) -> set[str]:
+    """Return chemistry tools that produced a non-error result in the Pi session."""
+    completed: set[str] = set()
+    for session in sessions:
+        try:
+            lines = session.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            message = entry.get("message") or {}
+            if message.get("role") != "toolResult":
+                continue
+            tool = message.get("toolName")
+            if tool in {"assemble", "render_reactions"} and not message.get("isError", False):
+                completed.add(tool)
+    return completed
+
+
+def last_assistant_stop_reason(sessions: list[Path]) -> str | None:
+    """Return the final assistant's stop reason, allowing recovered earlier errors."""
+    reason = None
+    for session in sorted(sessions):
+        try:
+            lines = session.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            message = entry.get("message") or {}
+            if message.get("role") == "assistant":
+                reason = message.get("stopReason")
+    return reason
+
+
+def first_env(names) -> str | None:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return None
+
+
+# Pi 0.82.1 reads these keys from <agent dir>/settings.json (settings-manager.js). The defaults
+# are Pi's own, so a run without overrides behaves exactly like the benchmark sidecar, which
+# writes no settings file. httpIdleTimeoutMs is undici's headers/body timeout: the wait for the
+# first byte and the maximum silence inside a stream. Keep it at minutes, not hours: a stalled
+# stream is only ever noticed through it. retry.maxRetries / baseDelayMs / provider.maxRetryDelayMs
+# govern Pi's provider-error retries (stream ended early, 5xx, 429).
+PI_SETTINGS_DEFAULTS = {
+    "httpIdleTimeoutMs": ("PI_HTTP_IDLE_TIMEOUT_MS", 300_000),
+    "retry.maxRetries": ("PI_RETRY_MAX_RETRIES", 3),
+    "retry.baseDelayMs": ("PI_RETRY_BASE_DELAY_MS", 2_000),
+    "retry.provider.maxRetryDelayMs": ("PI_RETRY_MAX_RETRY_DELAY_MS", 60_000),
+}
+
+
+def pi_settings() -> dict:
+    values = {}
+    for key, (env_name, default) in PI_SETTINGS_DEFAULTS.items():
+        raw = os.environ.get(env_name)
+        try:
+            value = int(raw) if raw not in (None, "") else default
+        except ValueError:
+            die(f"{env_name} must be an integer, got {raw!r}")
+        if value < 0:
+            die(f"{env_name} must be non-negative")
+        values[key] = value
+    return {
+        "httpIdleTimeoutMs": values["httpIdleTimeoutMs"],
+        "retry": {
+            "maxRetries": values["retry.maxRetries"],
+            "baseDelayMs": values["retry.baseDelayMs"],
+            "provider": {"maxRetryDelayMs": values["retry.provider.maxRetryDelayMs"]},
+        },
+    }
+
+
+def build_models_json(profile_name: str, model: str | None) -> tuple[str, str, dict, str]:
+    profiles = json.loads(PROFILES.read_text(encoding="utf-8"))["profiles"]
+    if profile_name not in profiles:
+        die(f"unknown provider profile {profile_name!r}; known: {', '.join(profiles)}")
+    profile = profiles[profile_name]
+    base_url = first_env(profile["env_base_url"])
+    api_key = first_env(profile["env_api_key"])
+    if not base_url or not api_key:
+        die(f"profile {profile_name} needs {' or '.join(profile['env_base_url'])} and "
+            f"{' or '.join(profile['env_api_key'])} in the environment")
+    model = model or profile["default_model"]
+    config = json.loads(json.dumps(profile["config"]).replace("$BASE_URL", base_url).replace("$MODEL", model))
+    provider = profile["provider"]
+    return provider, model, {"providers": {provider: config}}, api_key
+
+
+def cmd_check(args) -> int:
+    ok = True
+
+    def report(flag: bool, message: str) -> None:
+        nonlocal ok
+        ok = ok and flag
+        print(("[ok]   " if flag else "[FAIL] ") + message)
+
+    report((SKILL_DIR / "SKILL.md").is_file() and (SKILL_DIR / "LESSONS.md").is_file(), f"skill documents under {SKILL_DIR}")
+    report(EXTENSION.is_file(), f"pi extension {EXTENSION}")
+    report((ROOT / "scripts" / "run_chem_mcp.py").is_file(), "MCP server scripts/run_chem_mcp.py")
+    report((ROOT / "third_party" / "molecular_assembly").is_dir(), "third_party/ present (R-group engine)")
+    pi = ROOT / "node_modules" / ".bin" / "pi"
+    if pi.is_file():
+        version = subprocess.run([str(pi), "--version"], capture_output=True, text=True, env=runtime_env({})).stdout.strip()
+        report(True, f"pi runtime {version or '(version unknown)'}")
+    else:
+        report(False, "pi runtime missing (bash runtime/install.sh)")
+    try:
+        from rdkit import Chem  # noqa: F401
+        import rdkit
+        report(rdkit.__version__ == "2022.09.5", f"rdkit {rdkit.__version__} (expected 2022.09.5)")
+    except Exception as exc:  # pragma: no cover
+        report(False, f"rdkit import failed: {exc}")
+    for module in ("PIL", "requests", "numpy"):
+        try:
+            __import__(module)
+            report(True, f"python module {module}")
+        except Exception:
+            report(False, f"python module {module} missing")
+    molparser = os.environ.get("MOLPARSER_URL")
+    cache = os.environ.get("OCSR_CACHE")
+    report(bool(molparser or cache), "MOLPARSER_URL or OCSR_CACHE set (value not printed)")
+    for profile, names in (("anthropic", ("ANTHROPIC_BASE_URL",)), ("openai-compat", ("OPENAI_BASE_URL",))):
+        present = any(os.environ.get(n) for n in names)
+        print(f"[info] provider profile {profile}: {'configured' if present else 'not configured'}")
+    prompt = compose_prompt(DEFAULT_WORKDIR, None)
+    print(f"[info] prompt sha256 {hashlib.sha256(prompt.encode()).hexdigest()[:16]} ({len(prompt)} chars)")
+    return 0 if ok else 1
+
+
+def cmd_prompt(args) -> int:
+    sys.stdout.write(compose_prompt(args.workdir, args.closed_book))
+    return 0
+
+
+def cmd_extract(args) -> int:
+    figure = Path(args.figure).resolve()
+    if not figure.is_file():
+        die(f"figure not found: {figure}")
+    out = Path(args.out).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    workdir = Path(args.workdir).resolve()
+    workdir.mkdir(parents=True, exist_ok=True)
+    target = workdir / "figure.png"
+    if target.exists() and target.resolve() != figure:
+        target.unlink()
+    if target.resolve() != figure:
+        shutil.copyfile(figure, target)
+    stale = [p for p in ("answer.json", "plan.json", "review.html", "review.png") if (workdir / p).exists()]
+    if stale and not args.force:
+        die(f"{workdir} already holds {', '.join(stale)}; pass --force to overwrite")
+    for p in stale:
+        (workdir / p).unlink()
+
+    pi = pi_binary()
+    provider, model, models_json, api_key = build_models_json(args.provider, args.model)
+    agent_dir = out / "pi-agent-dir"
+    (agent_dir / "sessions").mkdir(parents=True, exist_ok=True)
+    (agent_dir / "models.json").write_text(json.dumps(models_json, indent=2), encoding="utf-8")
+    os.chmod(agent_dir / "models.json", 0o600)
+    settings = pi_settings()
+    (agent_dir / "settings.json").write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    os.chmod(agent_dir / "settings.json", 0o600)
+    prompt = compose_prompt(str(workdir), args.closed_book)
+    (out / "prompt.txt").write_text(prompt, encoding="utf-8")
+
+    command = [
+        str(pi), "--print", "--mode", "text", "--name", args.session_name,
+        "--session-dir", str(agent_dir / "sessions"),
+        "--provider", provider, "--model", model,
+    ]
+    if args.thinking:
+        command += ["--thinking", args.thinking]
+    command += [
+        "--no-context-files", "--no-skills", "--skill", str(SKILL_DIR),
+        "--no-extensions", "-e", str(EXTENSION), "--approve", prompt,
+    ]
+    env = runtime_env({
+        "RXNMINER_DEADLINE_EPOCH": str(int(time.time()) + int(args.timeout)),
+        "PI_CODING_AGENT_DIR": str(agent_dir),
+        "PI_PROVIDER_API_KEY": api_key,
+        "HOME": os.environ.get("HOME", str(out)),
+    })
+    if args.dry_run:
+        print(json.dumps({"cwd": str(workdir), "provider": provider, "model": model,
+                          "command": command[:-1] + ["<prompt %d chars>" % len(prompt)]}, indent=2))
+        return 0
+
+    started = time.time()
+    log = (out / "pi.log").open("w", encoding="utf-8")
+    try:
+        proc = subprocess.run(command, cwd=str(workdir), env=env, stdout=log, stderr=subprocess.STDOUT,
+                              timeout=args.timeout)
+        rc = proc.returncode
+    except subprocess.TimeoutExpired:
+        rc = 124
+    finally:
+        log.close()
+    elapsed = time.time() - started
+
+    sessions = sorted((agent_dir / "sessions").rglob("*.jsonl"))
+    completed_steps = completed_chemistry_steps(sessions)
+    last_stop_reason = last_assistant_stop_reason(sessions)
+    artifacts = {}
+    # A candidate answer is always harvested when it exists: a half-built answer still scores
+    # what it got right, and dropping it would turn a partial extraction into a zero. Whether the
+    # run reached the immutable assembly and visual review steps, and whether Pi's final turn
+    # ended in an error, is recorded next to it so the benchmark side can tell a complete answer
+    # from a partial one (run.json: answer_complete, incomplete_reason).
+    required_steps = {"assemble", "render_reactions"}
+    missing_steps = sorted(required_steps - completed_steps)
+    answer_complete = not missing_steps and last_stop_reason != "error"
+    incomplete_reason = None
+    if last_stop_reason == "error":
+        incomplete_reason = "final assistant turn ended with stopReason=error"
+    elif missing_steps:
+        incomplete_reason = "chemistry steps not completed: " + ", ".join(missing_steps)
+    for name in ("answer.json", "plan.json", "review.html", "review.png"):
+        src = workdir / name
+        if src.is_file():
+            shutil.copyfile(src, out / name)
+            artifacts[name] = hashlib.sha256(src.read_bytes()).hexdigest()
+    for extra in workdir.glob("figure_*"):
+        dest = out / extra.name
+        if extra.is_dir():
+            shutil.copytree(extra, dest, dirs_exist_ok=True)
+        else:
+            shutil.copyfile(extra, dest)
+    tool_calls = 0
+    for session in sessions:
+        for line in session.read_text(encoding="utf-8", errors="replace").splitlines():
+            if '"toolCall"' in line:
+                tool_calls += line.count('"type": "toolCall"') or line.count('"type":"toolCall"')
+    summary = {
+        "figure": str(figure), "workdir": str(workdir), "provider": provider, "model": model,
+        "pi_rc": rc, "elapsed_sec": round(elapsed, 1), "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "artifacts": artifacts, "sessions": [str(s) for s in sessions], "tool_calls": tool_calls,
+        "completed_steps": sorted(completed_steps), "last_stop_reason": last_stop_reason,
+        "answer_complete": answer_complete, "incomplete_reason": incomplete_reason,
+        "answer_present": "answer.json" in artifacts, "pi_settings": settings, "timeout_sec": args.timeout,
+    }
+    (out / "run.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    print(json.dumps(summary, indent=2))
+    if rc != 0:
+        print(f"rxnminer: pi exited {rc}; see {out / 'pi.log'}", file=sys.stderr)
+        return rc
+    if "answer.json" in artifacts and not answer_complete:
+        print(f"rxnminer: answer.json harvested but the run is incomplete ({incomplete_reason}); see run.json",
+              file=sys.stderr)
+    if "answer.json" not in artifacts:
+        print("rxnminer: pi finished but produced no answer.json", file=sys.stderr)
+        return 3
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="rxnminer", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("check", help="verify the runtime and configuration").set_defaults(func=cmd_check)
+    p = sub.add_parser("prompt", help="print the exact prompt the model receives")
+    p.add_argument("--workdir", default=DEFAULT_WORKDIR)
+    p.add_argument("--closed-book", default=None, metavar="HOSTS")
+    p.set_defaults(func=cmd_prompt)
+    e = sub.add_parser("extract", help="extract every reaction from one figure")
+    e.add_argument("figure")
+    e.add_argument("--out", required=True)
+    e.add_argument("--provider", default="anthropic", choices=("anthropic", "openai-compat"))
+    e.add_argument("--model", default=None)
+    e.add_argument("--workdir", default=DEFAULT_WORKDIR, help="agent working directory; /app reproduces the paper lane byte for byte")
+    e.add_argument("--closed-book", default=None, metavar="HOSTS", help="append the offline network policy naming these model hosts")
+    e.add_argument("--thinking", default=None, help="pi thinking level (omit to keep pi's default, as the paper lane did)")
+    e.add_argument("--timeout", type=int, default=3600, help="wall-clock cap for the whole run in seconds")
+    e.add_argument("--session-name", default="rxnminer-figure-extract")
+    e.add_argument("--force", action="store_true")
+    e.add_argument("--dry-run", action="store_true")
+    e.set_defaults(func=cmd_extract)
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

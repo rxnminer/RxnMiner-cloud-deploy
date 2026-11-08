@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pinned Python deps (scientific subset)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install rdkit==2022.9.5 numpy==1.26.4 scipy==1.14.1 Pillow==12.3.0 requests==2.32.5 pytest
+      - name: Unit tests
+        run: PYTHONPATH=. python -m pytest tests -q
+      - name: Offline MCP smoke (9 tools, V2 assembly)
+        run: PYTHONPATH=. python scripts/smoke_test.py
+      - name: Skill leak lint
+        run: python tools/skill_lint.py skills/reaction-extract/SKILL.md skills/reaction-extract/LESSONS.md
+      - name: Third-party manifest
+        run: python tools/verify_third_party.py
